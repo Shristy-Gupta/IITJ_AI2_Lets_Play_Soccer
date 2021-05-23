@@ -1,0 +1,364 @@
+import random
+import sys
+import math
+import pygame as py
+from queue import Queue
+# initialize the pygame and other variables
+finalcost=0
+secondfinal=0
+py.init()
+q = Queue()
+# End of initialize block
+
+# THIS BLOCK SPECIFIES THE DESIGN OF THE GAME
+# Define players and positions
+height = 726
+width = 570
+playerbluex = 273
+playerbluey = 347
+
+# GAME BOARD
+screen = py.display.set_mode((width, height))
+py.display.set_caption("Let's Play Soccer! - Created by Shristy Gupta")
+background_field = py.image.load("soccer.png")
+
+#LOAD AND INITIALIZE OF BOTH THE TEAMS
+blueplayer = py.image.load("blueplayer.png")
+redplayer = py.image.load("redplayer.png")
+bluexa = 0
+bluexb = 0
+bluexc = 0
+blueya = 0
+blueyb = 0
+blueyc = 0
+
+redxa = 0
+redxb = 0
+redxc = 0
+redya = 0
+redyb = 0
+redyc = 0
+
+
+#SET RANDOM POSITIONS OF BOTH THE TEAMS EXCEPT THE KICKER!
+def setredrand():
+    global redxa
+    global redxb
+    global redxc
+    global redya
+    global redyb
+    global redyc
+    redxa = random.randint(30, 512)
+    redxb = random.randint(30, 512)
+    check = random.randint(0, 1)
+    if check:
+        redxc = random.randint(90, 230)
+    else:
+        redxc = random.randint(310, 435)
+    redya = random.randint(192, 320)
+    redyb = random.randint(192, 320)
+    redyc = random.randint(40, 80)
+
+def setbluerand():
+    global bluexa
+    global bluexb
+    global bluexc
+    global blueya
+    global blueyb
+    global blueyc
+    bluexa = random.randint(30, 500)
+    bluexb = random.randint(40, 512)
+    bluexc = random.randint(90, 435)
+    blueya = random.randint(192, 320)
+    blueyb = random.randint(192, 320)
+    blueyc = random.randint(100, 102)
+
+
+def playerBlue():
+    screen.blit(blueplayer, (playerbluex, playerbluey))
+    screen.blit(blueplayer, (bluexa, blueya))
+    screen.blit(blueplayer, (bluexb, blueyb))
+    screen.blit(blueplayer, (bluexc, blueyc))
+
+def playerRed():
+    screen.blit(redplayer, (redxa, redya))
+    screen.blit(redplayer, (redxb, redyb))
+    screen.blit(redplayer, (redxc, redyc))
+
+setredrand()
+setbluerand()
+
+def ball(x,y):
+    py.draw.circle(screen, (255, 255, 255), (x, y), 10)
+
+
+
+# END of design
+
+#Start of logic
+def coordinates(agent):
+    if agent == 'a':
+        return (bluexa,blueya)
+    if agent == 'b':
+        return (bluexb,blueyb)
+    if agent == 'c':
+        return (bluexc,blueyc)
+    if agent == 'source':
+        return (playerbluex,playerbluey)
+    if agent == 'final':
+        return (270,10)
+
+def sourcedest(path):
+    if path == 'sa':
+        sx,sy=coordinates('source')
+        ax,ay=coordinates('a')
+        return (sx,sy,ax,ay)
+    if path == 'sb':
+        sx,sy=coordinates('source')
+        bx,by=coordinates('b')
+        return (sx,sy,bx,by)
+    if path == 'sc':
+        sx,sy=coordinates('source')
+        cx,cy=coordinates('c')
+        return (sx,sy,cx,cy)
+    if path == 'ac':
+        ax, ay = coordinates('a')
+        cx, cy = coordinates('c')
+        return (ax,ay,cx,cy)
+    if path == 'bc':
+        bx, by = coordinates('b')
+        cx, cy = coordinates('c')
+        return (bx,by,cx,cy)
+    if path == 'af':
+        ax, ay = coordinates('a')
+        fx, fy = coordinates('final')
+        return (ax,ay,fx,fy)
+    if path == 'bf':
+        bx, by = coordinates('b')
+        fx,fy=coordinates('final')
+        return (bx,by,fx,fy)
+    if path == 'cf':
+        cx, cy = coordinates('c')
+        fx, fy = coordinates('final')
+        return (cx,cy,fx,fy)
+    if path == 'ab':
+        ax, ay = coordinates('a')
+        bx, by = coordinates('b')
+        return (ax,ay,bx,by)
+    if path == 'ba':
+        bx, by = coordinates('b')
+        ax, ay = coordinates('a')
+        return  (bx, by, ax, ay)
+
+
+def lineequation(line):
+    # y= slope * x + c
+    x1, y1, x2, y2 = sourcedest(line)
+    try:
+        slope = (float(y2) - y1) / (float(x2) - x1)
+        return (x1, y1, x2, y2, slope)
+
+    except ZeroDivisionError:
+        slope = (float(y2) - y1) / 0.01
+        return (x1, y1, x2, y2, slope)
+
+def detectobstacle(line):
+    # This function detects if any red player is in the line
+    # check if any of the three lines is coming in the path
+    x1, y1, x2, y2, slope = lineequation(line)
+    constant = float(y1) -slope * x1
+    lista=[(redxa, redya), (redxb, redyb), (redxc, redyc)]
+    for RX,RY in lista:
+        num = slope * (RX - x1) - (RY - y1)
+        den = math.sqrt(1 + slope ** 2)
+        try:
+            d = num / den
+            d = abs(d)
+            if (d>=0 and d <= 42 and RY>=y2 and RY <=y1):
+                if RY == y1 and RY == y2:
+                    #check x coordinate
+                    if x1>x2 and RX <= x1 and RX >= x2:
+                        return True
+                    elif x1<x2 and RX >= x1 and RX <= x2:
+                        return True
+                    else:
+                        continue
+                else:
+                    return True
+
+        except ZeroDivisionError:
+            continue
+    return False
+
+def pathcost(path):
+    x1,y1,x2,y2=sourcedest(path)
+    dist = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return dist
+
+def shortestpath():
+    # Heart of the program there will be total five paths
+    # It will update the queue
+    pathscf =sys.maxsize
+    pathsacf=sys.maxsize
+    pathsbcf=sys.maxsize
+    pathsaf =sys.maxsize
+    pathsbf =sys.maxsize
+    pathsabf = sys.maxsize
+    pathsbaf = sys.maxsize
+    costlist=[]
+    global finalcost
+    global secondfinal
+    # calculate for path scf
+    # check if there is an obstacle
+    if(not(detectobstacle('sc') or detectobstacle('cf'))):
+        pathscf = pathcost('sc') + pathcost('cf')
+        costlist.append(pathscf)
+    # calculate for path sacf
+    # check if there is an obstacle
+    if (not (detectobstacle('sa') or detectobstacle('ac') or detectobstacle('cf'))):
+        pathsacf = pathcost('sa') + pathcost('ac') + pathcost('cf')
+        costlist.append(pathsacf)
+    # calculate for path sbcf
+    # check if there is an obstacle
+    if (not (detectobstacle('sb') or detectobstacle('bc') or detectobstacle('cf'))):
+        pathsbcf = pathcost('sb') + pathcost('bc') + pathcost('cf')
+        costlist.append(pathsbcf)
+    # calculate for path sbaf
+    # check if there is an obstacle
+    if (not (detectobstacle('sb') or detectobstacle('ba') or detectobstacle('af'))):
+        pathsbaf = pathcost('sb') + pathcost('ba') + pathcost('af')
+        costlist.append(pathsbaf)
+    # calculate for path sabf
+    # check if there is an obstacle
+    if (not (detectobstacle('sa') or detectobstacle('ab') or detectobstacle('bf'))):
+        pathsabf = pathcost('sa') + pathcost('ab') + pathcost('bf')
+        costlist.append(pathsabf)
+    # calculate for path saf
+    # check if there is an obstacle
+    if (not (detectobstacle('sa') or detectobstacle('af'))):
+        pathsaf = pathcost('sa') + pathcost('af')
+        costlist.append(pathsaf)
+    # calculate for path sbf
+    # check if there is an obstacle
+    if (not (detectobstacle('sb') or detectobstacle('bf'))):
+        pathsbf = pathcost('sb') + pathcost('bf')
+        costlist.append(pathsbf)
+
+    finalcost = min(pathscf,pathsacf,pathsbcf,pathsaf,pathsbf,pathsabf,pathsbaf)
+    costlist.sort()
+    secondfinal = costlist[1] if len(costlist)>1 else 2000
+    print(finalcost,secondfinal)
+    #find the min correspond to which path?
+    if finalcost == sys.maxsize:
+        q.put('NO')
+    elif finalcost == pathscf:
+        q.put('sc')
+        q.put('cf')
+        q.put('NO')
+        print('pathscf')
+    elif finalcost == pathsaf:
+        q.put('sa')
+        q.put('af')
+        q.put('NO')
+        print('pathsaf')
+    elif finalcost == pathsbf:
+        q.put('sb')
+        q.put('bf')
+        q.put('NO')
+        print('pathsbf')
+    elif finalcost == pathsbcf:
+        q.put('sb')
+        q.put('bc')
+        q.put('cf')
+        q.put('NO')
+        print('pathsbcf')
+    elif finalcost == pathsacf:
+        q.put('sa')
+        q.put('ac')
+        q.put('cf')
+        q.put('NO')
+        print('pathsacf')
+    elif finalcost == pathsabf:
+        q.put('sa')
+        q.put('ab')
+        q.put('bf')
+        q.put('NO')
+        print('pathsabf')
+    elif finalcost == pathsbaf:
+        q.put('sb')
+        q.put('ba')
+        q.put('af')
+        q.put('NO')
+        print('pathsbcf')
+
+
+
+
+shortestpath()
+
+# COST BOARD
+red = (255, 0, 0)
+yellow = (255, 255, 0)
+font = py.font.Font('freesansbold.ttf', 20)
+if finalcost == sys.maxsize:
+    textout = "No possible path, obstacle in LOS"
+else:
+
+    textout = "Optimal Cost: " + str(round(finalcost, 2)) + " Second: " + str(round(secondfinal,2))
+text = font.render(textout, True, yellow, red)
+textRect = text.get_rect()
+textRect.center = (288, 576)
+
+#End of logic
+
+# DRIVER
+agent = q.get()
+if agent!='NO':
+    xsource, ysource, xdest, ydest, slope = lineequation(agent)
+    j = ysource
+    i = xsource
+
+# since we don't want our screen to shut down in seconds, we need to make a
+# infinite while loop
+
+openwin = True
+while openwin:
+    # Handling events
+    screen.fill([0, 0, 0])
+    screen.blit(background_field, (0, 0))
+    for event in py.event.get():
+        if event.type == py.QUIT:
+            openwin = False
+
+    if agent != 'NO':
+        py.draw.line(screen, (255, 255, 0), (xsource, ysource), (xdest, ydest), width = 4)
+        if j > ydest:
+
+            ball(i, j)
+            if xdest < xsource:
+                i -= 0.2
+            else:
+                i += 0.2
+
+            j = (slope * i) + float(ysource) - slope * xsource
+        else:
+            agent = q.get()
+
+            if agent!='NO':
+                xsource, ysource, xdest, ydest, slope = lineequation(agent)
+                j = ysource
+                i = xsource
+                print(agent)
+
+
+
+    playerBlue()
+    playerRed()
+    screen.blit(text, textRect)
+    py.display.update()
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+    pass
+
+
